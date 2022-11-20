@@ -1,0 +1,11 @@
+---
+
+- hosts: all
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - ./config/vars.yaml  
+  roles:
+    - role: update  
+    - role: setup    
+    - role: site

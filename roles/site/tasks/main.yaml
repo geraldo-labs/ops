@@ -1,0 +1,71 @@
+- name: Add the user '{{ domain.username }}'
+  ansible.builtin.user:
+    name: "{{ domain.username }}"
+    comment: "{{ domain.comments }}"
+
+- name: Create a 4096-bit SSH key for user {{ domain.username }} in ~/.ssh/id_rsa
+  ansible.builtin.user:
+    name: "{{ domain.username }}"
+    generate_ssh_key: yes
+    ssh_key_bits: 4096
+    ssh_key_file: .ssh/id_rsa    
+ 
+- name: "Clone staic github repository {{ domain.name }}"
+  when:
+    - domain.static.enabled == true
+  git:
+    repo: "{{ domain.static.repository.name }}"
+    dest: /home/{{ domain.username }}/repos/{{ domain.name }}
+    version: "{{ domain.static.repository.version }}"
+    clone: yes
+    update: yes
+    force: yes
+
+- name: Grant access to site folder {{ domain.name }}
+  ansible.builtin.file:
+    path: /home/{{ domain.username }}/repos/{{ domain.name }}
+    state: directory
+    mode: '0755'
+    owner: www-data
+    group: www-data
+    recurse: yes
+
+- name: Grant access to home folder  {{ domain.username }}
+  ansible.builtin.file:
+    path: /home/{{ domain.username }}
+    state: directory
+    mode: '0755'
+    recurse: yes
+
+- name: Install nginx site for letsencrypt requests {{ domain.name }}
+  template:
+    src: templates/nginx-http.j2
+    dest: /etc/nginx/sites-enabled/{{ domain.name }}-http-redirect.conf
+
+- name: Reload Nginx configuration {{ domain.name }}
+  service:
+    name: nginx
+    state: restarted
+  become: true
+
+- name: Create letsencrypt certificate {{ domain.name }}
+  shell: letsencrypt certonly -n --webroot -w /var/www/letsencrypt -m {{ domain.email }} --agree-tos -d {{ domain.name }}
+  args:
+    creates: /etc/letsencrypt/live/{{ domain.name }}
+
+- name: "Enable {{ domain.name }} https nginx"
+  template:
+    src: templates/nginx-le.j2
+    dest: /etc/nginx/sites-enabled/{{ domain.name }}-https.conf
+
+- name: Add letsencrypt cronjob for cert renewal {{ domain.name }}
+  cron:
+    name: letsencrypt_renewal
+    special_time: weekly
+    job: letsencrypt --renew certonly -n --webroot -w /var/www/letsencrypt -m {{ domain.email }} --agree-tos -d {{ domain.name }}
+
+- name: Reload Nginx configuration {{ domain.name }}
+  service:
+    name: nginx
+    state: restarted
+  become: true

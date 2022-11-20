@@ -1,0 +1,21 @@
+domain:
+  username: <username>
+  comments: <comments>
+  name: <domain geraldolabs.com>
+  email: <email@email.com>
+
+  static:
+    enabled: true
+    repository: 
+      name: <public repository>
+      version: <semantic versioning>
+    root_path: <static site path>
+
+  proxy_pass:
+    enabled: false
+    repository: 
+      name: <public repository>
+      version: <semantic versioning>
+    port: <port number>
+    path: <url path>
+    rewrite: <url path>

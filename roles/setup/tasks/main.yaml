@@ -1,0 +1,52 @@
+- name: Ensure git is installed
+  apt: 
+    name: git 
+    state: latest
+
+- name: Ensure nginx is at the latest version
+  apt: 
+    name: nginx
+    state: latest
+
+- name: Start service nginx, if not started
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Install letsencrypt
+  apt: 
+    name: letsencrypt 
+    state: latest
+
+- name: create letsencrypt directory
+  file: 
+    name: /var/www/letsencrypt 
+    state: directory
+
+- name: Remove default nginx config
+  file: 
+    name: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Remove default nginx website
+  file: 
+    name: /usr/share/nginx/html
+    state: absent
+
+- name: Install system nginx config
+  template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+
+- name: Generate dhparams
+  shell: openssl dhparam -out /etc/nginx/dhparams.pem 2048
+  args:
+    creates: /etc/nginx/dhparams.pem
+
+- name: Reload Nginx configuration
+  service:
+    name: nginx
+    state: restarted
+  become: true
+
